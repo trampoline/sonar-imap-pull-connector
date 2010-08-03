@@ -4,7 +4,7 @@ require 'rake'
 begin
   require 'jeweler'
   Jeweler::Tasks.new do |gem|
-    gem.name = "sonar-imap-pull-connector"
+    gem.name = "sonar_imap_pull_connector"
     gem.summary = %Q{imap connector for sonar}
     gem.description = %Q{an imap pull connector for sonar, retrieving and deleting mails from an imap mailbox}
     gem.email = "mccraigmccraig@googlemail.com"

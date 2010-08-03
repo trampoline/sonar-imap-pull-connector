@@ -1,3 +1,4 @@
+$: << File.expand_path("..", __FILE__)
 require 'rubygems'
 require 'sonar_connector'
 require 'net/imap'
