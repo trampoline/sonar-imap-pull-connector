@@ -12,6 +12,13 @@ begin
     gem.authors = ["mccraig mccraig of the clan mccraig"]
     gem.add_development_dependency "rspec", ">= 1.2.9"
     # gem is a Gem::Specification... see http://www.rubygems.org/read/chapter/20 for additional settings
+
+    gem.add_dependency "sonar_connector", ">= 0.5.1"
+    gem.add_dependency "activesupport", ">= 2.3.5"
+    gem.add_dependency "json_pure", ">= 1.2.2"
+    
+    gem.add_development_dependency "rspec", ">= 1.2.9"
+    gem.add_development_dependency "rr", ">= 0.10.5"
   end
   Jeweler::GemcutterTasks.new
 rescue LoadError
