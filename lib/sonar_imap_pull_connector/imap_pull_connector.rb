@@ -41,26 +41,30 @@ module Sonar
         log.info "opening connection to : imap://#{user}@#{host}:#{port}/ for folders #{fs.inspect}"
 
         imap = Net::IMAP.new(host, port, usessl)
-        imap.login(user, password)
-        log.info "logged in"
+        begin
+          imap.login(user, password)
+          log.info "logged in"
 
-        state[:folder_last_uids] ||= {}
+          state[:folder_last_uids] ||= {}
 
-        fs.each do |f|
-          imap.select(f)
-          next_uid = (state[:folder_last_uids][f] || MIN_LAST_UID) + 1
+          fs.each do |f|
+            imap.select(f)
+            next_uid = (state[:folder_last_uids][f] || MIN_LAST_UID) + 1
 
-          log.info "retrieving from folder: #{f}, uid>=#{next_uid}"
+            log.info "retrieving from folder: #{f}, uid>=#{next_uid}"
 
-          # min uid value is 1
-          uids = imap.uid_search(["UID", "#{next_uid}:#{MAX_UID}"])[0...batch_size]
-          uids.each do |uid|
-            log.debug "[#{uid}]"
-            fetch_and_save(imap, uid)
-            state[:folder_last_uids][f] = uid
-            save_state
+            # min uid value is 1
+            uids = imap.uid_search(["UID", "#{next_uid}:#{MAX_UID}"])[0...batch_size]
+            uids.each do |uid|
+              log.debug "[#{uid}]"
+              fetch_and_save(imap, uid)
+              state[:folder_last_uids][f] = uid
+              save_state
+            end
+            log.info "finished folder: #{f}, last_uid=#{state[:folder_last_uids][f]}"
           end
-          log.info "finished folder: #{f}, last_uid=#{state[:folder_last_uids][f]}"
+        ensure
+          imap.disconnect
         end
 
         log.info "finished"
