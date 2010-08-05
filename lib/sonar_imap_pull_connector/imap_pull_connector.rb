@@ -36,35 +36,40 @@ module Sonar
         @batch_size = settings["batch_size"] || DEFAULT_BATCH_SIZE
       end
 
+      def open_connection
+        imap = Net::IMAP.new(host, port, usessl)
+        imap.login(user, password)
+        log.info "logged in"
+        @imap = imap
+      end
+
+      def retrieve_imap
+        @imap = nil if @imap && @imap.disconnected?
+        @imap || open_connection
+      end
+
       def action
         fs = [*folders]
         log.info "opening connection to : imap://#{user}@#{host}:#{port}/ for folders #{fs.inspect}"
 
-        imap = Net::IMAP.new(host, port, usessl)
-        begin
-          imap.login(user, password)
-          log.info "logged in"
+        imap = retrieve_imap
+        state[:folder_last_uids] ||= {}
 
-          state[:folder_last_uids] ||= {}
+        fs.each do |f|
+          imap.select(f)
+          next_uid = (state[:folder_last_uids][f] || MIN_LAST_UID) + 1
 
-          fs.each do |f|
-            imap.select(f)
-            next_uid = (state[:folder_last_uids][f] || MIN_LAST_UID) + 1
+          log.info "retrieving from folder: #{f}, uid>=#{next_uid}"
 
-            log.info "retrieving from folder: #{f}, uid>=#{next_uid}"
-
-            # min uid value is 1
-            uids = imap.uid_search(["UID", "#{next_uid}:#{MAX_UID}"])[0...batch_size]
-            uids.each do |uid|
-              log.debug "[#{uid}]"
-              fetch_and_save(imap, uid)
-              state[:folder_last_uids][f] = uid
-              save_state
-            end
-            log.info "finished folder: #{f}, last_uid=#{state[:folder_last_uids][f]}"
+          # min uid value is 1
+          uids = imap.uid_search(["UID", "#{next_uid}:#{MAX_UID}"])[0...batch_size]
+          uids.each do |uid|
+            log.debug "[#{uid}]"
+            fetch_and_save(imap, uid)
+            state[:folder_last_uids][f] = uid
+            save_state
           end
-        ensure
-          imap.disconnect
+          log.info "finished folder: #{f}, last_uid=#{state[:folder_last_uids][f]}"
         end
 
         log.info "finished"
