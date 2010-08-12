@@ -81,7 +81,7 @@ module Sonar
         content = "#{headers}\n\n\n\n\n\n"
         json = mail_to_json(content, Time.now)
         
-        complete.add(json, "#{msg_uid}")
+        filestore.write(:complete, "#{msg_uid}.json", json)
       end
 
       def mail_to_json(content, timestamp)
