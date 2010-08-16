@@ -48,7 +48,7 @@ module Sonar
         @imap || open_connection
       end
 
-      def with_connection_timeout(t)
+      def with_connection_timeout(t=300)
         begin
           Timeout::timeout(t) do
             yield
