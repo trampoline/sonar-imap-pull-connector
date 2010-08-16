@@ -1,6 +1,25 @@
 module Sonar
   module Connector
+    module ImapConnectionTimeout
+      def with_connection_timeout(t=300)
+        begin
+          Timeout::timeout(t) do
+            yield
+          end
+        rescue Timeout::Error => e
+          log.info "connection timeout : resetting connection"
+          begin 
+            @imap.close
+          rescue
+          end
+          @imap = nil
+          raise
+        end
+      end
+    end
+
     class ImapPullConnector < Sonar::Connector::Base
+      include ImapConnectionTimeout
 
       # http://www.faqs.org/rfcs/rfc3501.html
       # min uid value is 1, so min last_uid is 0
@@ -46,18 +65,6 @@ module Sonar
       def retrieve_imap
         @imap = nil if @imap && @imap.disconnected?
         @imap || open_connection
-      end
-
-      def with_connection_timeout(t=300)
-        begin
-          Timeout::timeout(t) do
-            yield
-          end
-        rescue Timeout::Error => e
-          log.info "connection timeout : resetting connection"
-          @imap = nil
-          raise
-        end
       end
 
       def action
