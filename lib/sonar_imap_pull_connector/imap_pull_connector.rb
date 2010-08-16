@@ -48,6 +48,18 @@ module Sonar
         @imap || open_connection
       end
 
+      def with_connection_timeout(t)
+        begin
+          Timeout::timeout(t) do
+            yield
+          end
+        rescue Timeout::Error => e
+          log.info "connection timeout : resetting connection"
+          @imap = nil
+          raise
+        end
+      end
+
       def action
         fs = [*folders]
         log.info "opening connection to : imap://#{user}@#{host}:#{port}/ for folders #{fs.inspect}"
@@ -56,13 +68,13 @@ module Sonar
         state[:folder_last_uids] ||= {}
 
         fs.each do |f|
-          imap.select(f)
+          with_connection_timeout { imap.select(f) }
           next_uid = (state[:folder_last_uids][f] || MIN_LAST_UID) + 1
 
           log.info "retrieving from folder: #{f}, uid>=#{next_uid}"
 
           # min uid value is 1
-          uids = imap.uid_search(["UID", "#{next_uid}:#{MAX_UID}"])[0...batch_size]
+          uids = with_connection_timeout { imap.uid_search(["UID", "#{next_uid}:#{MAX_UID}"])[0...batch_size] }
           uids.each do |uid|
             log.debug "[#{uid}]"
             fetch_and_save(imap, uid)
@@ -76,7 +88,7 @@ module Sonar
       end
 
       def fetch_and_save(imap, msg_uid)
-        msg = imap.uid_fetch(msg_uid, "RFC822.HEADER")[0]
+        msg = with_connection_timeout { imap.uid_fetch(msg_uid, "RFC822.HEADER")[0] }
         headers = msg.attr["RFC822.HEADER"]
         content = "#{headers}\n\n\n\n\n\n"
         json = mail_to_json(content, Time.now)
